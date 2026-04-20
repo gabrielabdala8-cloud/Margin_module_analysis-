@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Batch 2 — Margin Validation Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', 'Segoe UI', sans-serif; background: #0c0f1a; color: #e2e8f0; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(30,27,75,0.3); }
+  ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+  .header { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%); padding: 28px 32px 0; border-bottom: 1px solid rgba(99,102,241,0.2); }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .header-label { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: #818cf8; text-transform: uppercase; margin-bottom: 4px; }
+  .header h1 { font-size: 26px; font-weight: 700; color: #f8fafc; }
+  .header-sub { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .formula-box { margin-top: 10px; display: inline-block; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); border-radius: 6px; padding: 6px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a5b4fc; }
+  .batch-badge { background: rgba(16,185,129,0.15); border-radius: 8px; padding: 10px 16px; border: 1px solid rgba(16,185,129,0.25); }
+  .batch-badge .lbl { font-size: 11px; color: #6ee7b7; font-weight: 500; }
+  .batch-badge .time { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #e0e7ff; }
+  .tabs { display: flex; gap: 4px; margin-top: 20px; }
+  .tab { padding: 10px 20px; border-radius: 8px 8px 0 0; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.2s; background: transparent; color: #64748b; border-bottom: 2px solid transparent; }
+  .tab:hover { color: #94a3b8; }
+  .tab.active { background: rgba(99,102,241,0.25); color: #e0e7ff; border-bottom-color: #818cf8; }
+  .tab .badge { margin-left: 6px; background: #ef4444; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+  .content { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .kpi-card { background: rgba(30,27,75,0.5); border-radius: 10px; padding: 16px 18px; border: 1px solid rgba(99,102,241,0.12); position: relative; overflow: hidden; }
+  .kpi-card .bar { position: absolute; top: 0; left: 0; width: 3px; height: 100%; border-radius: 10px 0 0 10px; }
+  .kpi-card .kpi-label { font-size: 11px; color: #94a3b8; font-weight: 500; margin-bottom: 6px; }
+  .kpi-card .kpi-value { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #f1f5f9; }
+  .kpi-card .kpi-sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .section { background: rgba(30,27,75,0.4); border-radius: 12px; padding: 20px 24px; border: 1px solid rgba(99,102,241,0.1); margin-bottom: 24px; }
+  .section h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #c7d2fe; }
+  .section .note { font-size: 12px; color: #64748b; margin-top: 10px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 12px; color: #94a3b8; font-weight: 500; font-size: 11px; text-align: right; border-bottom: 1px solid rgba(99,102,241,0.2); }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { padding: 10px 12px; text-align: right; font-family: 'JetBrains Mono', monospace; border-bottom: 1px solid rgba(99,102,241,0.08); }
+  td:first-child { text-align: left; }
+  td:nth-child(2) { text-align: left; font-family: 'DM Sans', sans-serif; }
+  td.name { font-weight: 600; color: #e0e7ff; font-family: 'DM Sans', sans-serif; }
+  .flag-red { background: rgba(127,29,29,0.2); border-radius: 12px; padding: 20px 24px; border: 1px solid rgba(239,68,68,0.25); margin-bottom: 20px; }
+  .flag-red th { color: #f87171; border-bottom-color: rgba(239,68,68,0.2); }
+  .flag-red td { border-bottom-color: rgba(239,68,68,0.08); }
+  .flag-yellow { background: rgba(113,63,18,0.15); border-radius: 12px; padding: 20px 24px; border: 1px solid rgba(234,179,8,0.2); margin-bottom: 20px; }
+  .flag-yellow th { color: #fbbf24; border-bottom-color: rgba(234,179,8,0.2); }
+  .flag-yellow td { border-bottom-color: rgba(234,179,8,0.06); }
+  .flag-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .flag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .flag-note { font-size: 12px; margin-bottom: 12px; opacity: 0.8; }
+  .detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(99,102,241,0.06); font-size: 12px; }
+  .detail-row .dl { color: #94a3b8; }
+  .detail-row .dr { font-family: 'JetBrains Mono', monospace; color: #e0e7ff; }
+  .green { color: #22c55e; } .red { color: #ef4444; } .orange { color: #f97316; } .teal { color: #14b8a6; }
+  .yellow-t { color: #eab308; } .bold { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-label">Margin Module Overhaul · Validation</div>
+      <h1>Batch 2 — 3:00 PM Snapshot</h1>
+      <div class="header-sub">April 20, 2026 · 989 orders · Cost vs Selling analysis</div>
+      <div class="formula-box">markup % = (selling_cad − lazr_cost_cad) / lazr_cost_cad × 100</div>
+    </div>
+    <div class="batch-badge">
+      <div class="lbl">Batch 2</div>
+      <div class="time">3:00 PM</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">Overview</button>
+    <button class="tab" onclick="switchTab(1)">By Provider</button>
+    <button class="tab" onclick="switchTab(2)">By Transport &amp; Lane</button>
+    <button class="tab" onclick="switchTab(3)">Flagged Orders <span class="badge">23</span></button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- OVERVIEW -->
+  <div class="tab-panel active" id="panel-0">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="bar" style="background:#818cf8"></div><div class="kpi-label">Total Orders</div><div class="kpi-value">989</div><div class="kpi-sub">903 billable</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#f97316"></div><div class="kpi-label">Total Cost</div><div class="kpi-value">$42,324.61</div><div class="kpi-sub">lazr_cost_cad</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#22c55e"></div><div class="kpi-label">Total Selling</div><div class="kpi-value">$52,294.69</div><div class="kpi-sub">selling_cad</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#14b8a6"></div><div class="kpi-label">Gross Profit</div><div class="kpi-value">$9,970.08</div><div class="kpi-sub">23.56% blended markup</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#6366f1"></div><div class="kpi-label">Avg Markup %</div><div class="kpi-value">26.73%</div><div class="kpi-sub">median 26.99%</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#eab308"></div><div class="kpi-label">Zero Selling</div><div class="kpi-value">86</div><div class="kpi-sub">COLLECT / NO_COST</div></div>
+      <div class="kpi-card"><div class="bar" style="background:#ef4444"></div><div class="kpi-label">Negative Markup</div><div class="kpi-value">7</div><div class="kpi-sub">orders losing $</div></div>
+    </div>
+    <div class="section">
+      <h3>Markup % Distribution — Billable Orders (903)</h3>
+      <canvas id="distChart" height="100"></canvas>
+      <div class="note">41% of billable orders land in the 25-30% markup bucket (374). Secondary cluster at 30-50% (246 orders). The bulk of markups concentrate between 20-50%.</div>
+    </div>
+  </div>
+
+  <!-- BY PROVIDER -->
+  <div class="tab-panel" id="panel-1">
+    <div class="section">
+      <h3>Avg Markup % by Carrier</h3>
+      <canvas id="providerChart" height="200"></canvas>
+    </div>
+    <div class="section">
+      <h3>Provider Breakdown</h3>
+      <table>
+        <thead><tr><th style="text-align:left">Provider</th><th>Orders</th><th>Avg Markup</th><th>Total Cost</th><th>Total Selling</th><th>Profit</th></tr></thead>
+        <tbody id="providerTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BY TRANSPORT & LANE -->
+  <div class="tab-panel" id="panel-2">
+    <div class="two-col">
+      <div class="section">
+        <h3>By Transport Type</h3>
+        <canvas id="transportChart" height="140"></canvas>
+        <div id="transportDetails" style="margin-top:12px"></div>
+      </div>
+      <div class="section">
+        <h3>By Lane Type</h3>
+        <canvas id="laneChart" height="140"></canvas>
+        <div id="laneDetails" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLAGGED ORDERS -->
+  <div class="tab-panel" id="panel-3">
+    <div class="flag-red">
+      <div class="flag-header">
+        <span class="flag-dot" style="background:#ef4444"></span>
+        <h3 style="font-size:15px;font-weight:600;color:#fca5a5;margin:0">Negative Markup Orders (7)</h3>
+      </div>
+      <div class="flag-note" style="color:#fca5a5">All 7 from Cascades Canada ULC — selling below cost. Consistent pattern from Batch 1 (was 3, now 7). This client needs investigation.</div>
+      <table>
+        <thead><tr><th style="text-align:left">Order #</th><th style="text-align:left">Client</th><th>Provider</th><th>Cost (CAD)</th><th>Selling (CAD)</th><th>Markup %</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#fca5a5">1766871829</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">UPS</td><td>$16.82</td><td>$12.85</td><td class="red bold">-23.60%</td></tr>
+          <tr><td style="color:#fca5a5">1766895212</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">PUROLATOR</td><td>$12.20</td><td>$9.38</td><td class="red bold">-23.11%</td></tr>
+          <tr><td style="color:#fca5a5">1766929208</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">UPS</td><td>$9.85</td><td>$7.98</td><td class="red bold">-18.98%</td></tr>
+          <tr><td style="color:#fca5a5">1766989888</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">UPS</td><td>$12.83</td><td>$8.98</td><td class="red bold">-30.01%</td></tr>
+          <tr><td style="color:#fca5a5">1767003466</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">UPS</td><td>$11.42</td><td>$7.99</td><td class="red bold">-30.04%</td></tr>
+          <tr><td style="color:#fca5a5">1767042673</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">PUROLATOR</td><td>$12.37</td><td>$9.14</td><td class="red bold">-26.11%</td></tr>
+          <tr><td style="color:#fca5a5">1767106452</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">PUROLATOR</td><td>$9.93</td><td>$7.98</td><td class="red bold">-19.64%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flag-yellow">
+      <div class="flag-header">
+        <span class="flag-dot" style="background:#eab308"></span>
+        <h3 style="font-size:15px;font-weight:600;color:#fde68a;margin:0">Low Markup Orders 0-5% (16)</h3>
+      </div>
+      <div class="flag-note" style="color:#fde68a">8 orders at exactly 0% markup (cost = selling). GMX Worldwide Xpress CLIENT tariff consistently shows 0% — likely by design. Other 0% orders on 3PL tariff need review.</div>
+      <table>
+        <thead><tr><th style="text-align:left">Order #</th><th style="text-align:left">Client</th><th>Provider</th><th>Cost (CAD)</th><th>Selling (CAD)</th><th>Markup %</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#fde68a">1766857898</td><td style="color:#e2e8f0">HRS Global</td><td style="color:#94a3b8">ROSE_ROCKET</td><td>$690.51</td><td>$702.51</td><td style="color:#eab308" class="bold">1.74%</td></tr>
+          <tr><td style="color:#fde68a">1766893915</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$46.18</td><td>$46.18</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766899014</td><td style="color:#e2e8f0">Genima</td><td style="color:#94a3b8">GLS_CANADA</td><td>$22.06</td><td>$22.74</td><td style="color:#eab308" class="bold">3.08%</td></tr>
+          <tr><td style="color:#fde68a">1766902940</td><td style="color:#e2e8f0">Cascades Canada ULC</td><td style="color:#94a3b8">PUROLATOR</td><td>$12.75</td><td>$12.75</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766916952</td><td style="color:#e2e8f0">Soyle</td><td style="color:#94a3b8">MIDLAND</td><td>$20.22</td><td>$20.72</td><td style="color:#eab308" class="bold">2.47%</td></tr>
+          <tr><td style="color:#fde68a">1766928700</td><td style="color:#e2e8f0">Joseph Ribkoff</td><td style="color:#94a3b8">THREE_PL</td><td>$1.00</td><td>$1.00</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766932484</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$22.29</td><td>$22.29</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766940980</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$29.47</td><td>$29.47</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766941088</td><td style="color:#e2e8f0">Ryder Cascades</td><td style="color:#94a3b8">THREE_PL</td><td>$1.00</td><td>$1.00</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766946792</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$29.47</td><td>$29.47</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1766981831</td><td style="color:#e2e8f0">Genima</td><td style="color:#94a3b8">GLS_CANADA</td><td>$48.48</td><td>$49.48</td><td style="color:#eab308" class="bold">2.06%</td></tr>
+          <tr><td style="color:#fde68a">1767020224</td><td style="color:#e2e8f0">HLC</td><td style="color:#94a3b8">CANPAR</td><td>$39.38</td><td>$41.13</td><td style="color:#eab308" class="bold">4.44%</td></tr>
+          <tr><td style="color:#fde68a">1767040372</td><td style="color:#e2e8f0">Sanuvox</td><td style="color:#94a3b8">PUROLATOR</td><td>$11.96</td><td>$12.46</td><td style="color:#eab308" class="bold">4.18%</td></tr>
+          <tr><td style="color:#fde68a">1767053479</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$22.29</td><td>$22.29</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1767094089</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$29.47</td><td>$29.47</td><td class="red bold">0.00%</td></tr>
+          <tr><td style="color:#fde68a">1767096300</td><td style="color:#e2e8f0">GMX Worldwide Xpress</td><td style="color:#94a3b8">FEDEX</td><td>$29.32</td><td>$29.32</td><td class="red bold">0.00%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h3 style="margin-bottom:10px">Zero Selling Orders (86)</h3>
+      <p style="font-size:13px;color:#94a3b8;margin-bottom:8px;line-height:1.6">
+        All 86 zero-selling orders are either <span class="yellow-t bold">COLLECT</span> (47) or <span class="yellow-t bold">CLIENT_TARIFF_NO_TRANSPORT_COST</span> (39) — expected $0 by design, <strong class="green">not bugs</strong>.
+      </p>
+      <p style="font-size:13px;color:#94a3b8;line-height:1.6">
+        No 3PL-tariff orders have $0 selling in this batch — the previously reported $0 selling bug does not appear in these 989 orders.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var providers = [
+  { provider: "MANITOULIN", orders: 1, avg_markup: 41.47, total_cost: 75.60, total_selling: 106.95 },
+  { provider: "CANADA_POST", orders: 4, avg_markup: 34.50, total_cost: 213.35, total_selling: 289.46 },
+  { provider: "DHL", orders: 4, avg_markup: 33.25, total_cost: 317.24, total_selling: 427.29 },
+  { provider: "ICS", orders: 4, avg_markup: 31.99, total_cost: 42.67, total_selling: 56.32 },
+  { provider: "CANPAR", orders: 48, avg_markup: 30.97, total_cost: 1094.36, total_selling: 1429.22 },
+  { provider: "PUROLATOR", orders: 157, avg_markup: 28.87, total_cost: 3917.65, total_selling: 5022.03 },
+  { provider: "VITRAN", orders: 4, avg_markup: 28.79, total_cost: 732.64, total_selling: 942.54 },
+  { provider: "UPS", orders: 432, avg_markup: 27.31, total_cost: 11554.28, total_selling: 15066.04 },
+  { provider: "MIDLAND", orders: 47, avg_markup: 25.23, total_cost: 4444.90, total_selling: 5623.96 },
+  { provider: "FEDEX", orders: 119, avg_markup: 24.99, total_cost: 4699.76, total_selling: 5838.45 },
+  { provider: "CSA", orders: 1, avg_markup: 23.80, total_cost: 227.30, total_selling: 281.40 },
+  { provider: "PROJECT_44", orders: 14, avg_markup: 23.05, total_cost: 4993.14, total_selling: 6038.86 },
+  { provider: "GLS_CANADA", orders: 33, avg_markup: 21.88, total_cost: 800.98, total_selling: 957.54 },
+  { provider: "ROSE_ROCKET", orders: 17, avg_markup: 19.85, total_cost: 3334.48, total_selling: 3794.77 },
+  { provider: "MORNEAU", orders: 10, avg_markup: 16.20, total_cost: 2829.50, total_selling: 3210.80 },
+  { provider: "LOOMIS_EXPRESS", orders: 1, avg_markup: 15.00, total_cost: 42.66, total_selling: 49.06 },
+  { provider: "THREE_PL", orders: 7, avg_markup: 3.73, total_cost: 3004.10, total_selling: 3160.00 }
+];
+
+var transports = [
+  { type: "PARCEL", orders: 745, avg_markup: 27.24, total_cost: 21564.01, total_selling: 27662.19 },
+  { type: "LTL", orders: 76, avg_markup: 22.94, total_cost: 18575.61, total_selling: 21878.22 },
+  { type: "ENVELOPE", orders: 44, avg_markup: 25.65, total_cost: 912.00, total_selling: 1142.80 },
+  { type: "PAK", orders: 37, avg_markup: 25.60, total_cost: 1239.97, total_selling: 1569.21 },
+  { type: "EXPRESS_BOX", orders: 1, avg_markup: 28.01, total_cost: 33.02, total_selling: 42.27 }
+];
+
+var lanes = [
+  { lane: "Intra-CA", orders: 383, avg_markup: 25.44 },
+  { lane: "Intra-QC", orders: 242, avg_markup: 26.57 },
+  { lane: "Intra-US", orders: 181, avg_markup: 29.26 },
+  { lane: "CA-to-US", orders: 62, avg_markup: 26.64 },
+  { lane: "US-to-CA", orders: 5, avg_markup: 27.68 }
+];
+
+function fmt(n) { return n.toLocaleString("en-CA", { style: "currency", currency: "CAD" }); }
+
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+
+var ttip = { backgroundColor: '#1e1b4b', titleColor: '#e0e7ff', bodyColor: '#e2e8f0', borderColor: 'rgba(99,102,241,0.3)', borderWidth: 1, cornerRadius: 8, padding: 10 };
+var grid = { color: 'rgba(99,102,241,0.08)' };
+
+var inited = { 0: false, 1: false, 2: false, 3: false };
+
+function switchTab(idx) {
+  var tabs = document.querySelectorAll('.tab');
+  var panels = document.querySelectorAll('.tab-panel');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', i === idx);
+    panels[i].classList.toggle('active', i === idx);
+  }
+  if (!inited[idx]) { initTab(idx); inited[idx] = true; }
+}
+
+function initTab(idx) {
+  if (idx === 0) {
+    new Chart(document.getElementById('distChart'), {
+      type: 'bar',
+      data: {
+        labels: ['<0%','0-5%','5-10%','10-15%','15-20%','20-25%','25-30%','30-50%','50-100%','100%+'],
+        datasets: [{
+          data: [17,7,30,60,16,128,374,246,24,1],
+          backgroundColor: ['#ef4444','#f97316','#f59e0b','#eab308','#a3e635','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4'],
+          borderRadius: 4, barPercentage: 0.7
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: ttip },
+        scales: { x: { grid: grid }, y: { grid: grid } }
+      }
+    });
+  }
+
+  if (idx === 1) {
+    var sorted = providers.slice().sort(function(a,b) { return a.avg_markup - b.avg_markup; });
+    new Chart(document.getElementById('providerChart'), {
+      type: 'bar',
+      data: {
+        labels: sorted.map(function(p) { return p.provider; }),
+        datasets: [{
+          data: sorted.map(function(p) { return p.avg_markup; }),
+          backgroundColor: sorted.map(function(p) { return p.avg_markup < 10 ? '#ef4444' : p.avg_markup < 15 ? '#f97316' : '#6366f1'; }),
+          borderRadius: 4, barPercentage: 0.6
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false }, tooltip: Object.assign({}, ttip, { callbacks: { label: function(ctx) { return ctx.raw + '% avg markup'; } } }) },
+        scales: { x: { max: 45, grid: grid, ticks: { callback: function(v) { return v + '%'; } } }, y: { grid: { display: false } } }
+      }
+    });
+
+    var byOrders = providers.slice().sort(function(a,b) { return b.orders - a.orders; });
+    var tbody = document.getElementById('providerTable');
+    var html = '';
+    byOrders.forEach(function(p) {
+      var profit = p.total_selling - p.total_cost;
+      var mc = p.avg_markup < 10 ? 'red' : p.avg_markup < 15 ? 'orange' : 'green';
+      html += '<tr><td class="name">' + p.provider + '</td><td>' + p.orders + '</td><td class="' + mc + '">' + p.avg_markup + '%</td><td>' + fmt(p.total_cost) + '</td><td>' + fmt(p.total_selling) + '</td><td class="teal">' + fmt(profit) + '</td></tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  if (idx === 2) {
+    var tSorted = transports.slice().sort(function(a,b) { return b.orders - a.orders; });
+    new Chart(document.getElementById('transportChart'), {
+      type: 'bar',
+      data: {
+        labels: tSorted.map(function(t) { return t.type; }),
+        datasets: [{
+          data: tSorted.map(function(t) { return t.avg_markup; }),
+          backgroundColor: '#818cf8', borderRadius: 4, barPercentage: 0.6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: Object.assign({}, ttip, { callbacks: { label: function(ctx) { return ctx.raw + '% avg markup'; } } }) },
+        scales: { x: { grid: grid }, y: { grid: grid, ticks: { callback: function(v) { return v + '%'; } } } }
+      }
+    });
+
+    var td = document.getElementById('transportDetails');
+    var h = '';
+    tSorted.forEach(function(t) {
+      h += '<div class="detail-row"><span class="dl">' + t.type + '</span><span class="dr">' + t.orders + ' orders · ' + t.avg_markup + '% markup · ' + fmt(t.total_selling - t.total_cost) + ' profit</span></div>';
+    });
+    td.innerHTML = h;
+
+    var lSorted = lanes.slice().sort(function(a,b) { return b.orders - a.orders; });
+    new Chart(document.getElementById('laneChart'), {
+      type: 'doughnut',
+      data: {
+        labels: lSorted.map(function(l) { return l.lane + ' (' + l.avg_markup + '%)'; }),
+        datasets: [{
+          data: lSorted.map(function(l) { return l.orders; }),
+          backgroundColor: ['#6366f1','#818cf8','#a78bfa','#c4b5fd','#e0e7ff'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } }, tooltip: ttip }
+      }
+    });
+
+    var ld = document.getElementById('laneDetails');
+    var lh = '';
+    lSorted.forEach(function(l) {
+      lh += '<div class="detail-row"><span class="dl">' + l.lane + '</span><span class="dr">' + l.orders + ' orders · ' + l.avg_markup + '% avg markup</span></div>';
+    });
+    ld.innerHTML = lh;
+  }
+}
+
+initTab(0);
+inited[0] = true;
+</script>
+</body>
+</html>
