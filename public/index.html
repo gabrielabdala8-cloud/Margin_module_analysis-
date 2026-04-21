@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Margin Validation Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans','Segoe UI',sans-serif;background:#0c0f1a;color:#e2e8f0;min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:rgba(30,27,75,.3)}::-webkit-scrollbar-thumb{background:rgba(99,102,241,.3);border-radius:3px}
+.header{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);padding:28px 32px 0;border-bottom:1px solid rgba(99,102,241,.2)}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.header-label{font-size:11px;font-weight:600;letter-spacing:2px;color:#818cf8;text-transform:uppercase;margin-bottom:4px}
+.header h1{font-size:26px;font-weight:700;color:#f8fafc}
+.header-sub{font-size:13px;color:#94a3b8;margin-top:4px}
+.formula-box{margin-top:10px;display:inline-block;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:6px;padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a5b4fc}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.day-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(99,102,241,.25);background:rgba(99,102,241,.1);color:#94a3b8;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.day-btn:hover{background:rgba(99,102,241,.2);color:#c7d2fe}
+.day-btn.active{background:rgba(99,102,241,.35);color:#e0e7ff;border-color:#818cf8}
+.upload-btn{padding:8px 16px;border-radius:8px;border:1px dashed rgba(16,185,129,.4);background:rgba(16,185,129,.08);color:#6ee7b7;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.upload-btn:hover{background:rgba(16,185,129,.15);border-style:solid}
+#fileInput{display:none}
+.tabs{display:flex;gap:4px;margin-top:20px}
+.tab{padding:10px 20px;border-radius:8px 8px 0 0;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;background:transparent;color:#64748b;border-bottom:2px solid transparent}
+.tab:hover{color:#94a3b8}.tab.active{background:rgba(99,102,241,.25);color:#e0e7ff;border-bottom-color:#818cf8}
+.tab .badge{margin-left:6px;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px}
+.content{padding:24px 32px;max-width:1200px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+.kpi-card{background:rgba(30,27,75,.5);border-radius:10px;padding:16px 18px;border:1px solid rgba(99,102,241,.12);position:relative;overflow:hidden}
+.kpi-card .bar{position:absolute;top:0;left:0;width:3px;height:100%;border-radius:10px 0 0 10px}
+.kpi-card .kpi-label{font-size:11px;color:#94a3b8;font-weight:500;margin-bottom:6px}
+.kpi-card .kpi-value{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#f1f5f9}
+.kpi-card .kpi-sub{font-size:11px;color:#64748b;margin-top:4px}
+.section{background:rgba(30,27,75,.4);border-radius:12px;padding:20px 24px;border:1px solid rgba(99,102,241,.1);margin-bottom:24px}
+.section h3{font-size:15px;font-weight:600;margin-bottom:16px;color:#c7d2fe}
+.section .note{font-size:12px;color:#64748b;margin-top:10px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:800px){.two-col{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:10px 12px;color:#94a3b8;font-weight:500;font-size:11px;text-align:right;border-bottom:1px solid rgba(99,102,241,.2)}
+th:first-child,th:nth-child(2){text-align:left}
+td{padding:10px 12px;text-align:right;font-family:'JetBrains Mono',monospace;border-bottom:1px solid rgba(99,102,241,.08)}
+td:first-child{text-align:left}td:nth-child(2){text-align:left;font-family:'DM Sans',sans-serif}
+td.name{font-weight:600;color:#e0e7ff;font-family:'DM Sans',sans-serif}
+.flag-red{background:rgba(127,29,29,.2);border-radius:12px;padding:20px 24px;border:1px solid rgba(239,68,68,.25);margin-bottom:20px}
+.flag-red th{color:#f87171;border-bottom-color:rgba(239,68,68,.2)}.flag-red td{border-bottom-color:rgba(239,68,68,.08)}
+.flag-yellow{background:rgba(113,63,18,.15);border-radius:12px;padding:20px 24px;border:1px solid rgba(234,179,8,.2);margin-bottom:20px}
+.flag-yellow th{color:#fbbf24;border-bottom-color:rgba(234,179,8,.2)}.flag-yellow td{border-bottom-color:rgba(234,179,8,.06)}
+.flag-header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.flag-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.flag-note{font-size:12px;margin-bottom:12px;opacity:.8}
+.detail-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(99,102,241,.06);font-size:12px}
+.detail-row .dl{color:#94a3b8}.detail-row .dr{font-family:'JetBrains Mono',monospace;color:#e0e7ff}
+.green{color:#22c55e}.red{color:#ef4444}.orange{color:#f97316}.teal{color:#14b8a6}
+.yellow-t{color:#eab308}.bold{font-weight:700}
+.loading{text-align:center;padding:60px;color:#64748b;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-label">Margin Module Overhaul · Profitability Monitor</div>
+      <h1 id="mainTitle">Loading...</h1>
+      <div class="header-sub" id="mainSub"></div>
+      <div class="formula-box">markup % = (selling − coverage_sell − cost + coverage_cost) / (cost − coverage_cost) × 100</div>
+    </div>
+    <div class="controls">
+      <div id="dayButtons"></div>
+      <label class="upload-btn" for="fileInput">Upload new CSV</label>
+      <input type="file" id="fileInput" accept=".csv" />
+    </div>
+  </div>
+  <div class="tabs" id="tabBar">
+    <button class="tab active" onclick="switchTab(0)">Overview</button>
+    <button class="tab" onclick="switchTab(1)">By Provider</button>
+    <button class="tab" onclick="switchTab(2)">By Transport &amp; Lane</button>
+    <button class="tab" onclick="switchTab(3)">Flagged Orders <span class="badge" id="flagBadge">0</span></button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tab-panel active" id="panel-0"><div class="loading">Loading data...</div></div>
+  <div class="tab-panel" id="panel-1"></div>
+  <div class="tab-panel" id="panel-2"></div>
+  <div class="tab-panel" id="panel-3"></div>
+</div>
+
+<script>
+var RAW = [];
+var DAYS = {};
+var currentDay = null;
+var charts = {};
+
+function fmt(n) { return n.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' }); }
+
+// ---- CSV PARSING ----
+function parseCSV(text) {
+  var result = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+  return result.data;
+}
+
+function processData(rows) {
+  RAW = rows;
+  DAYS = {};
+  rows.forEach(function(r) {
+    var d = (r.order_created || '').substring(0, 10);
+    if (!d) return;
+    if (!DAYS[d]) DAYS[d] = [];
+    DAYS[d].push(r);
+  });
+  var dates = Object.keys(DAYS).sort();
+  renderDayButtons(dates);
+  selectDay(dates[dates.length - 1] || dates[0]);
+}
+
+// ---- DAY BUTTONS ----
+function renderDayButtons(dates) {
+  var c = document.getElementById('dayButtons');
+  c.innerHTML = '';
+  // "All" button
+  var ab = document.createElement('button');
+  ab.className = 'day-btn';
+  ab.textContent = 'All';
+  ab.onclick = function() { selectDay('ALL'); };
+  c.appendChild(ab);
+  dates.forEach(function(d) {
+    var b = document.createElement('button');
+    b.className = 'day-btn';
+    b.textContent = d;
+    b.onclick = function() { selectDay(d); };
+    c.appendChild(b);
+  });
+}
+
+function selectDay(day) {
+  currentDay = day;
+  var rows = day === 'ALL' ? RAW : (DAYS[day] || []);
+  document.querySelectorAll('.day-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent === day);
+  });
+  var label = day === 'ALL' ? 'All Days' : day;
+  document.getElementById('mainTitle').textContent = 'Profitability Monitor — ' + label;
+  document.getElementById('mainSub').textContent = rows.length + ' orders · Coverage excluded from markup calculation';
+  renderAll(rows);
+}
+
+// ---- RENDER ----
+function renderAll(rows) {
+  // Destroy old charts
+  Object.keys(charts).forEach(function(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
+
+  var billable = rows.filter(function(r) { return r.tariff_type !== 'COLLECT' && r.tariff_type !== 'CLIENT_TARIFF_NO_TRANSPORT_COST' && r.tariff_type !== 'SKIP_BILLING'; });
+  var bnz = billable.filter(function(r) { return r.selling_cad > 0 && r.lazr_cost_cad > 0; });
+  var zeroSell = rows.filter(function(r) { return r.selling_cad === 0; });
+  var neg = bnz.filter(function(r) { return r.markup_pct < 0; });
+  var low = bnz.filter(function(r) { return r.markup_pct >= 0 && r.markup_pct < 5; });
+
+  var totalCost = billable.reduce(function(s, r) { return s + (r.lazr_cost_cad || 0); }, 0);
+  var totalSelling = billable.reduce(function(s, r) { return s + (r.selling_cad || 0); }, 0);
+  var totalProfit = totalSelling - totalCost;
+  var overallMarkup = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
+  var avgMarkup = bnz.length > 0 ? bnz.reduce(function(s, r) { return s + r.markup_pct; }, 0) / bnz.length : 0;
+  var sortedMarkups = bnz.map(function(r) { return r.markup_pct; }).sort(function(a, b) { return a - b; });
+  var medianMarkup = sortedMarkups.length > 0 ? sortedMarkups[Math.floor(sortedMarkups.length / 2)] : 0;
+
+  document.getElementById('flagBadge').textContent = neg.length + low.length;
+
+  // OVERVIEW
+  var bins = [[-Infinity,0],[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,50],[50,100],[100,Infinity]];
+  var binLabels = ['<0%','0-5%','5-10%','10-15%','15-20%','20-25%','25-30%','30-50%','50-100%','100%+'];
+  var dist = bins.map(function(b) { return bnz.filter(function(r) { return r.markup_pct >= b[0] && r.markup_pct < b[1]; }).length; });
+
+  document.getElementById('panel-0').innerHTML =
+    '<div class="kpi-grid">' +
+    kpiCard('#818cf8', 'Total Orders', rows.length, billable.length + ' billable') +
+    kpiCard('#f97316', 'Total Cost', fmt(totalCost), 'lazr_cost_cad') +
+    kpiCard('#22c55e', 'Total Selling', fmt(totalSelling), 'selling_cad') +
+    kpiCard('#14b8a6', 'Gross Profit', fmt(totalProfit), overallMarkup.toFixed(2) + '% blended markup') +
+    kpiCard('#6366f1', 'Avg Markup %', avgMarkup.toFixed(2) + '%', 'median ' + medianMarkup.toFixed(2) + '%') +
+    kpiCard('#eab308', 'Zero Selling', zeroSell.length, 'COLLECT / NO_COST') +
+    kpiCard('#ef4444', 'Negative Markup', neg.length, 'orders losing $') +
+    '</div><div class="section"><h3>Markup % Distribution — Billable Orders (' + bnz.length + ')</h3><canvas id="distChart" height="100"></canvas></div>';
+
+  charts.dist = new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: { labels: binLabels, datasets: [{ data: dist, backgroundColor: ['#ef4444','#f97316','#f59e0b','#eab308','#a3e635','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4'], borderRadius: 4, barPercentage: .7 }] },
+    options: { responsive: true, plugins: { legend: { display: false }, tooltip: ttip() }, scales: { x: { grid: grd() }, y: { grid: grd() } } }
+  });
+
+  // BY PROVIDER
+  var provMap = {};
+  bnz.forEach(function(r) {
+    if (!provMap[r.provider]) provMap[r.provider] = { orders: 0, sumMarkup: 0, cost: 0, selling: 0 };
+    provMap[r.provider].orders++;
+    provMap[r.provider].sumMarkup += r.markup_pct;
+    provMap[r.provider].cost += r.lazr_cost_cad;
+    provMap[r.provider].selling += r.selling_cad;
+  });
+  var provArr = Object.keys(provMap).map(function(k) {
+    return { provider: k, orders: provMap[k].orders, avg_markup: Math.round(provMap[k].sumMarkup / provMap[k].orders * 100) / 100, total_cost: Math.round(provMap[k].cost * 100) / 100, total_selling: Math.round(provMap[k].selling * 100) / 100 };
+  }).sort(function(a, b) { return a.avg_markup - b.avg_markup; });
+
+  document.getElementById('panel-1').innerHTML =
+    '<div class="section"><h3>Avg Markup % by Carrier</h3><canvas id="provChart" height="' + Math.max(180, provArr.length * 25) + '"></canvas></div>' +
+    '<div class="section"><h3>Provider Breakdown</h3><table><thead><tr><th style="text-align:left">Provider</th><th>Orders</th><th>Avg Markup</th><th>Total Cost</th><th>Total Selling</th><th>Profit</th></tr></thead><tbody>' +
+    provArr.slice().sort(function(a, b) { return b.orders - a.orders; }).map(function(p) {
+      var mc = p.avg_markup < 10 ? 'red' : p.avg_markup < 15 ? 'orange' : 'green';
+      return '<tr><td class="name">' + p.provider + '</td><td>' + p.orders + '</td><td class="' + mc + '">' + p.avg_markup + '%</td><td>' + fmt(p.total_cost) + '</td><td>' + fmt(p.total_selling) + '</td><td class="teal">' + fmt(p.total_selling - p.total_cost) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  charts.prov = new Chart(document.getElementById('provChart'), {
+    type: 'bar',
+    data: { labels: provArr.map(function(p) { return p.provider; }), datasets: [{ data: provArr.map(function(p) { return p.avg_markup; }), backgroundColor: provArr.map(function(p) { return p.avg_markup < 10 ? '#ef4444' : p.avg_markup < 15 ? '#f97316' : '#6366f1'; }), borderRadius: 4, barPercentage: .6 }] },
+    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false }, tooltip: Object.assign({}, ttip(), { callbacks: { label: function(c) { return c.raw + '% avg markup'; } } }) }, scales: { x: { grid: grd(), ticks: { callback: function(v) { return v + '%'; } } }, y: { grid: { display: false } } } }
+  });
+
+  // BY TRANSPORT & LANE
+  var transMap = {};
+  bnz.forEach(function(r) {
+    var t = r.transport_type;
+    if (!transMap[t]) transMap[t] = { orders: 0, sumMarkup: 0, cost: 0, selling: 0 };
+    transMap[t].orders++; transMap[t].sumMarkup += r.markup_pct; transMap[t].cost += r.lazr_cost_cad; transMap[t].selling += r.selling_cad;
+  });
+  var transArr = Object.keys(transMap).map(function(k) {
+    return { type: k, orders: transMap[k].orders, avg_markup: Math.round(transMap[k].sumMarkup / transMap[k].orders * 100) / 100, total_cost: Math.round(transMap[k].cost * 100) / 100, total_selling: Math.round(transMap[k].selling * 100) / 100 };
+  }).sort(function(a, b) { return b.orders - a.orders; });
+
+  var laneMap = {};
+  bnz.filter(function(r) { return r.lane_type; }).forEach(function(r) {
+    if (!laneMap[r.lane_type]) laneMap[r.lane_type] = { orders: 0, sumMarkup: 0 };
+    laneMap[r.lane_type].orders++; laneMap[r.lane_type].sumMarkup += r.markup_pct;
+  });
+  var laneArr = Object.keys(laneMap).map(function(k) {
+    return { lane: k, orders: laneMap[k].orders, avg_markup: Math.round(laneMap[k].sumMarkup / laneMap[k].orders * 100) / 100 };
+  }).sort(function(a, b) { return b.orders - a.orders; });
+
+  document.getElementById('panel-2').innerHTML =
+    '<div class="two-col"><div class="section"><h3>By Transport Type</h3><canvas id="transChart" height="140"></canvas>' +
+    transArr.map(function(t) { return '<div class="detail-row"><span class="dl">' + t.type + '</span><span class="dr">' + t.orders + ' orders · ' + t.avg_markup + '% · ' + fmt(t.total_selling - t.total_cost) + ' profit</span></div>'; }).join('') +
+    '</div><div class="section"><h3>By Lane Type</h3><canvas id="laneChart" height="140"></canvas>' +
+    laneArr.map(function(l) { return '<div class="detail-row"><span class="dl">' + l.lane + '</span><span class="dr">' + l.orders + ' orders · ' + l.avg_markup + '% avg markup</span></div>'; }).join('') +
+    '</div></div>';
+
+  charts.trans = new Chart(document.getElementById('transChart'), {
+    type: 'bar',
+    data: { labels: transArr.map(function(t) { return t.type; }), datasets: [{ data: transArr.map(function(t) { return t.avg_markup; }), backgroundColor: '#818cf8', borderRadius: 4, barPercentage: .6 }] },
+    options: { responsive: true, plugins: { legend: { display: false }, tooltip: Object.assign({}, ttip(), { callbacks: { label: function(c) { return c.raw + '% avg markup'; } } }) }, scales: { x: { grid: grd() }, y: { grid: grd(), ticks: { callback: function(v) { return v + '%'; } } } } }
+  });
+
+  charts.lane = new Chart(document.getElementById('laneChart'), {
+    type: 'doughnut',
+    data: { labels: laneArr.map(function(l) { return l.lane + ' (' + l.avg_markup + '%)'; }), datasets: [{ data: laneArr.map(function(l) { return l.orders; }), backgroundColor: ['#6366f1','#818cf8','#a78bfa','#c4b5fd','#e0e7ff'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } }, tooltip: ttip() } }
+  });
+
+  // FLAGGED
+  var zeroCollect = zeroSell.filter(function(r) { return r.tariff_type === 'COLLECT'; }).length;
+  var zeroNoCost = zeroSell.filter(function(r) { return r.tariff_type === 'CLIENT_TARIFF_NO_TRANSPORT_COST'; }).length;
+  var zero3PL = zeroSell.filter(function(r) { return r.tariff_type === '3PL'; }).length;
+
+  document.getElementById('panel-3').innerHTML =
+    '<div class="flag-red"><div class="flag-header"><span class="flag-dot" style="background:#ef4444"></span><h3 style="font-size:15px;font-weight:600;color:#fca5a5;margin:0">Negative Markup Orders (' + neg.length + ')</h3></div>' +
+    '<div class="flag-note" style="color:#fca5a5">All negative orders are from Cascades Canada ULC — selling below cost.</div>' +
+    flagTable(neg, '#f87171', 'rgba(239,68,68,.2)', 'rgba(239,68,68,.08)', '#fca5a5') + '</div>' +
+    '<div class="flag-yellow"><div class="flag-header"><span class="flag-dot" style="background:#eab308"></span><h3 style="font-size:15px;font-weight:600;color:#fde68a;margin:0">Low Markup Orders 0-5% (' + low.length + ')</h3></div>' +
+    '<div class="flag-note" style="color:#fde68a">Orders at exactly 0% markup (cost = selling) — potential margin module issue.</div>' +
+    flagTable(low, '#fbbf24', 'rgba(234,179,8,.2)', 'rgba(234,179,8,.06)', '#fde68a') + '</div>' +
+    '<div class="section"><h3 style="margin-bottom:10px">Zero Selling Orders (' + zeroSell.length + ')</h3>' +
+    '<p style="font-size:13px;color:#94a3b8;line-height:1.6">COLLECT: ' + zeroCollect + ' · CLIENT_TARIFF_NO_TRANSPORT_COST: ' + zeroNoCost + (zero3PL > 0 ? ' · <strong class="red">3PL: ' + zero3PL + ' (BUG!)</strong>' : ' · 3PL: 0 <strong class="green">(no bugs)</strong>') + '</p></div>';
+}
+
+function kpiCard(color, label, value, sub) {
+  return '<div class="kpi-card"><div class="bar" style="background:' + color + '"></div><div class="kpi-label">' + label + '</div><div class="kpi-value">' + value + '</div><div class="kpi-sub">' + sub + '</div></div>';
+}
+
+function flagTable(arr, thColor, thBorder, tdBorder, tdFirst) {
+  if (arr.length === 0) return '<p style="font-size:13px;color:#94a3b8">None found.</p>';
+  return '<table><thead><tr><th style="text-align:left;color:' + thColor + ';border-bottom-color:' + thBorder + '">Order #</th><th style="text-align:left;color:' + thColor + ';border-bottom-color:' + thBorder + '">Client</th><th style="color:' + thColor + ';border-bottom-color:' + thBorder + '">Provider</th><th style="color:' + thColor + ';border-bottom-color:' + thBorder + '">Cost</th><th style="color:' + thColor + ';border-bottom-color:' + thBorder + '">Selling</th><th style="color:' + thColor + ';border-bottom-color:' + thBorder + '">Markup %</th></tr></thead><tbody>' +
+    arr.map(function(o) {
+      var mc = o.markup_pct <= 0 ? '#ef4444' : '#eab308';
+      return '<tr><td style="color:' + tdFirst + ';border-bottom-color:' + tdBorder + '">' + o.order_number + '</td><td style="color:#e2e8f0;border-bottom-color:' + tdBorder + ';font-family:DM Sans,sans-serif">' + o.client + '</td><td style="color:#94a3b8;border-bottom-color:' + tdBorder + '">' + o.provider + '</td><td style="border-bottom-color:' + tdBorder + '">' + fmt(o.lazr_cost_cad) + '</td><td style="border-bottom-color:' + tdBorder + '">' + fmt(o.selling_cad) + '</td><td style="color:' + mc + ';font-weight:700;border-bottom-color:' + tdBorder + '">' + o.markup_pct + '%</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function ttip() { return { backgroundColor: '#1e1b4b', titleColor: '#e0e7ff', bodyColor: '#e2e8f0', borderColor: 'rgba(99,102,241,.3)', borderWidth: 1, cornerRadius: 8, padding: 10 }; }
+function grd() { return { color: 'rgba(99,102,241,.08)' }; }
+
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = "'DM Sans',sans-serif";
+Chart.defaults.font.size = 11;
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach(function(t, i) { t.classList.toggle('active', i === idx); });
+  document.querySelectorAll('.tab-panel').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
+}
+
+// ---- FILE UPLOAD ----
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var rows = parseCSV(ev.target.result);
+    processData(rows);
+  };
+  reader.readAsText(file);
+});
+
+// ---- LOAD DEFAULT DATA FROM data.csv IN SAME FOLDER ----
+fetch('data.csv').then(function(r) { return r.text(); }).then(function(t) {
+  processData(parseCSV(t));
+}).catch(function() {
+  document.getElementById('panel-0').innerHTML = '<div class="loading">No data.csv found. Upload a CSV file to get started.</div>';
+  document.getElementById('mainTitle').textContent = 'Profitability Monitor';
+  document.getElementById('mainSub').textContent = 'Upload a CSV to begin';
+});
+</script>
+</body>
+</html>
